@@ -214,6 +214,19 @@ const apiProviderConfigSchemaList = [
   baseAPIProviderConfigSchema.extend({
     provider: z.literal("deepl"),
   }),
+  // 二次开发：豆包三个引擎。它们没有 model / providerSpecificSettings，登录态是
+  // 浏览器 Cookie 而不是配置字段 —— 但 `providerConfigItemSchema` 是
+  // `z.discriminatedUnion("provider", ...)`，缺了这三个分支，整份配置会在落盘时被
+  // schema 拒绝（`baseProviderConfigSchema` 还是 `z.strictObject`，多一个字段都进不来）。
+  baseAPIProviderConfigSchema.extend({
+    provider: z.literal("doubao-huoshan"),
+  }),
+  baseAPIProviderConfigSchema.extend({
+    provider: z.literal("doubao-llm"),
+  }),
+  baseAPIProviderConfigSchema.extend({
+    provider: z.literal("doubao-microsoft"),
+  }),
 ] as const
 
 export const providerConfigSchemaList = [

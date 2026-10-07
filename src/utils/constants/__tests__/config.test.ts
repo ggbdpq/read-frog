@@ -52,9 +52,10 @@ describe("dEFAULT_CONFIG", () => {
     expect(DEFAULT_CONFIG.selectionToolbar.customActions).toEqual([])
   })
 
-  it("seeds default translation providers and the default LLM providers in the default providers config", async () => {
+  it("seeds only the three doubao translate services in the default providers config", async () => {
     const { DEFAULT_CONFIG } = await import("../config")
     const { configSchema } = await import("@/types/config/config")
+    const { DOUBAO_PROVIDER_IDS, DOUBAO_PROVIDER_TYPES } = await import("../doubao")
 
     const parseResult = configSchema.safeParse(DEFAULT_CONFIG)
     if (!parseResult.success) {
@@ -62,44 +63,18 @@ describe("dEFAULT_CONFIG", () => {
     }
 
     expect(parseResult.success).toBe(true)
-    // Google leads deliberately: the deletion fallback takes the first usable provider in this
-    // order, and landing page translation on Microsoft is illegal in translationOnly mode
-    // (see DEFAULT_PROVIDER_CONFIG_LIST).
-    expect(DEFAULT_CONFIG.providersConfig.map((provider) => provider.id)).toEqual([
-      "google-translate-default",
-      "microsoft-translate-default",
-      "openai-default",
-      "jalapenocloud-default",
-      "deepseek-default",
+    // 二次开发：只剩豆包三个翻译服务，不再有 Google / Microsoft / 各家 LLM。
+    expect(DEFAULT_CONFIG.providersConfig.map((provider) => provider.provider)).toEqual([
+      ...DOUBAO_PROVIDER_TYPES,
     ])
-    expect(DEFAULT_CONFIG.pageTranslation.providerId).toBe("microsoft-translate-default")
-    expect(DEFAULT_CONFIG.selectionToolbar.features.translate.providerId).toBe(
-      "microsoft-translate-default",
-    )
-    expect(DEFAULT_CONFIG.inputTranslation.providerId).toBe("microsoft-translate-default")
-    expect(DEFAULT_CONFIG.videoSubtitles.providerId).toBe("microsoft-translate-default")
-    expect(
-      DEFAULT_CONFIG.providersConfig.find((provider) => provider.id === "jalapenocloud-default"),
-    ).toEqual(
-      expect.objectContaining({
-        model: {
-          model: "GLM-5.2",
-          isCustomModel: false,
-          customModel: null,
-        },
-      }),
-    )
-    expect(
-      DEFAULT_CONFIG.providersConfig.find((provider) => provider.id === "deepseek-default"),
-    ).toEqual(
-      expect.objectContaining({
-        model: {
-          model: "deepseek-v4-flash",
-          isCustomModel: false,
-          customModel: null,
-        },
-      }),
-    )
+    expect(DEFAULT_CONFIG.providersConfig.map((provider) => provider.id)).toEqual([
+      ...DOUBAO_PROVIDER_IDS,
+    ])
+    const defaultProviderId = DOUBAO_PROVIDER_IDS[1]!
+    expect(DEFAULT_CONFIG.pageTranslation.providerId).toBe(defaultProviderId)
+    expect(DEFAULT_CONFIG.selectionToolbar.features.translate.providerId).toBe(defaultProviderId)
+    expect(DEFAULT_CONFIG.inputTranslation.providerId).toBe(defaultProviderId)
+    expect(DEFAULT_CONFIG.videoSubtitles.providerId).toBe(defaultProviderId)
   })
 
   it("defaults fresh hover translation off", async () => {
@@ -139,7 +114,7 @@ describe("dEFAULT_CONFIG", () => {
       DEFAULT_CONFIG.selectionToolbar.customActions,
     )
     expect(config.selectionToolbar.builtInActions.dictionary).toEqual({
-      enabled: true,
+      enabled: false,
       providerId: "read-frog-free-ai",
     })
     expect(config.selectionToolbar.customActions).toEqual([])

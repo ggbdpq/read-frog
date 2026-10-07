@@ -23,17 +23,13 @@ import {
   createImproveWritingDefinition,
   createSentenceAnalysisDefinition,
 } from "./custom-action-templates"
+import { DOUBAO_DEFAULT_PROVIDER_TYPE, getDoubaoProviderId } from "./doubao"
 import { DEFAULT_GLOSSARY_CONFIG } from "./glossary"
 import {
   DEFAULT_SUBTITLE_TRANSLATE_PROMPTS_CONFIG,
   DEFAULT_TRANSLATE_PROMPTS_CONFIG,
 } from "./prompt"
-import {
-  buildDefaultProviderConfigList,
-  DEFAULT_PROVIDER_CONFIG,
-  DEFAULT_PROVIDER_CONFIG_LIST,
-  MICROSOFT_TRANSLATE_PROVIDER_ID,
-} from "./providers"
+import { buildDefaultProviderConfigList, DEFAULT_PROVIDER_CONFIG_LIST } from "./providers"
 import { DEFAULT_SELECTION_OVERLAY_OPACITY, SELECTION_TOOLBAR_FEATURE_IDS } from "./selection"
 import { DEFAULT_SIDE_CONTENT_WIDTH } from "./side"
 import {
@@ -92,6 +88,12 @@ function memoizeBuiltInLayout(build: (outputSchema: OutputSchema) => string | nu
 const getBuiltInDictionaryLayout = memoizeBuiltInLayout(buildDictionaryActionLayout)
 const getBuiltInSentenceAnalysisLayout = memoizeBuiltInLayout(buildSentenceAnalysisActionLayout)
 const getBuiltInImproveWritingLayout = memoizeBuiltInLayout(buildImproveWritingActionLayout)
+
+/**
+ * 二次开发：翻译服务只剩豆包三个（火山 / 豆包 AI / 微软），新装一律默认到豆包 AI。
+ * 所有「翻译类功能」的默认 providerId 都指向它，配置实例 id 由豆包契约统一生成。
+ */
+export const DEFAULT_TRANSLATE_PROVIDER_ID = getDoubaoProviderId(DOUBAO_DEFAULT_PROVIDER_TYPE)
 
 /**
  * Build the code-owned Dictionary action definition in the current UI locale.
@@ -166,7 +168,7 @@ export const DEFAULT_CONFIG: Config = {
   },
   providersConfig: DEFAULT_PROVIDER_CONFIG_LIST,
   pageTranslation: {
-    providerId: MICROSOFT_TRANSLATE_PROVIDER_ID,
+    providerId: DEFAULT_TRANSLATE_PROVIDER_ID,
     mode: "bilingual",
     modeShortcut: DEFAULT_TRANSLATION_MODE_SHORTCUT_KEY,
     node: {
@@ -225,7 +227,7 @@ export const DEFAULT_CONFIG: Config = {
     features: {
       translate: {
         enabled: true,
-        providerId: MICROSOFT_TRANSLATE_PROVIDER_ID,
+        providerId: DEFAULT_TRANSLATE_PROVIDER_ID,
         shortcut: DEFAULT_SELECTION_TRANSLATION_SHORTCUT_KEY,
       },
       speak: {
@@ -234,7 +236,8 @@ export const DEFAULT_CONFIG: Config = {
     },
     builtInActions: {
       dictionary: {
-        enabled: true,
+        // 二次开发：词典动作依赖 LLM 模型配置，已随「删掉模型配置」一并默认关闭。
+        enabled: false,
         providerId: BUILT_IN_AI_PROVIDER_ID,
       },
       sentenceAnalysis: {
@@ -250,12 +253,14 @@ export const DEFAULT_CONFIG: Config = {
     order: [...SELECTION_TOOLBAR_FEATURE_IDS, ...BUILT_IN_ACTION_IDS],
     unpinned: [BUILT_IN_IMPROVE_WRITING_ACTION_ID],
     noteSuggestion: {
-      enabled: true,
+      // 二次开发：笔记建议同样依赖 LLM，默认关闭。
+      enabled: false,
       actionId: BUILT_IN_DICTIONARY_ACTION_ID,
-      // Fresh installs always carry the OpenAI default provider; suggestions
-      // start working the moment the user adds their key, with no hosted plan
-      // requirement attached.
-      providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
+      // 指向内置 AI 而不是 `openai-default`：新装配置里已经没有任何 LLM provider，
+      // 而 configSchema 的 superRefine 会按 capability 校验这个 id（不看 enabled），
+      // 留着 `openai-default` 会让整份默认配置 schema 非法、写盘直接失败。
+      // 内置 AI 在 SYSTEM_PROVIDER_DEFS 里声明了 noteSuggestion 能力，是唯一合法值。
+      providerId: BUILT_IN_AI_PROVIDER_ID,
     },
   },
   sideContent: {
@@ -269,17 +274,18 @@ export const DEFAULT_CONFIG: Config = {
   },
   inputTranslation: {
     enabled: true,
-    providerId: MICROSOFT_TRANSLATE_PROVIDER_ID,
+    providerId: DEFAULT_TRANSLATE_PROVIDER_ID,
     fromLang: "targetCode",
     toLang: "sourceCode",
     enableCycle: false,
     timeThreshold: 300,
   },
   videoSubtitles: {
-    enabled: true,
+    // 二次开发：视频字幕依赖 LLM 模型配置与字幕队列，已从设置界面裁撤，默认关闭。
+    enabled: false,
     autoStart: false,
     toggleShortcut: DEFAULT_SUBTITLES_TOGGLE_SHORTCUT_KEY,
-    providerId: MICROSOFT_TRANSLATE_PROVIDER_ID,
+    providerId: DEFAULT_TRANSLATE_PROVIDER_ID,
     style: {
       displayMode: DEFAULT_DISPLAY_MODE,
       translationPosition: DEFAULT_TRANSLATION_POSITION,
@@ -329,13 +335,15 @@ export const DEFAULT_CONFIG: Config = {
     targetCode: null,
     promptId: DEFAULT_TRANSLATE_PROMPTS_CONFIG.promptId,
   },
-  glossary: { ...DEFAULT_GLOSSARY_CONFIG },
+  // 二次开发：术语表依赖 LLM 提示词，已从设置界面裁撤，默认关闭。
+  glossary: { ...DEFAULT_GLOSSARY_CONFIG, enabled: false },
 }
 
 /**
- * Translate features start on Microsoft Translate, which is reachable everywhere; a fresh
- * install is moved onto Google Translate afterwards where that endpoint answers — see
- * `selectFreshTranslateProviders`.
+ * 二次开发：新装配置只带豆包三个翻译服务，翻译类功能一律默认豆包 AI（见
+ * `DEFAULT_TRANSLATE_PROVIDER_ID`），不再有「先微软、探测到 Google 可达再切过去」
+ * 的那套外部探测 —— 现在没有 Google 服务可选，`selectFreshTranslateProviders`
+ * 也就只剩一个空实现。
  */
 export function buildFreshDefaultConfig(): Config {
   return {
@@ -345,7 +353,7 @@ export function buildFreshDefaultConfig(): Config {
       ...DEFAULT_CONFIG.selectionToolbar,
       builtInActions: {
         dictionary: {
-          enabled: true,
+          enabled: false,
           providerId: BUILT_IN_AI_PROVIDER_ID,
         },
         sentenceAnalysis: {

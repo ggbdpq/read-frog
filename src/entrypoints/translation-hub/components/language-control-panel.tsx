@@ -68,6 +68,8 @@ export function LanguageControlPanel() {
       <SearchableLanguageSelector
         className="min-w-0 flex-1"
         value={targetLangCode}
+        // Only the languages the translation backend can actually produce.
+        side="target"
         onValueChange={(value) => {
           if (value !== "auto") void setTargetLangCode(value)
         }}

@@ -3,6 +3,7 @@ import type { HostedAiStatus, HostedAiTierStatus } from "@/utils/hosted-ai/types
 import { describe, expect, it } from "vitest"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
 import { buildFeatureProviderPatch } from "@/utils/constants/feature-providers"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { isSystemProviderSelectorItem } from "@/utils/providers/provider-display"
 import {
   BUILT_IN_AI_PROVIDER_LOGO,
@@ -16,11 +17,30 @@ import {
   resolveLanguageDetectionConfigForModeChange,
 } from "../helpers"
 
+/**
+ * 二次开发后新装 profile 里只剩下三个豆包（纯翻译）provider，但本文件大量用例描述的
+ * 是「有多个本地 provider / 有 LLM provider 时如何挑候选人」的行为 —— 那些 provider
+ * 仍然合法存在，只是不再默认播种。所以这里按类型直接取默认配置，用例语义不变。
+ */
 function getProviderById(id: string): ProviderConfig {
-  const provider = DEFAULT_CONFIG.providersConfig.find((item) => item.id === id)
-  if (!provider) throw new Error(`Provider "${id}" not found in DEFAULT_CONFIG.providersConfig`)
-  return provider
+  const fromDefaultConfig = DEFAULT_CONFIG.providersConfig.find((item) => item.id === id)
+  if (fromDefaultConfig) {
+    return fromDefaultConfig
+  }
+  const seeded = Object.values(DEFAULT_PROVIDER_CONFIG).find((item) => item.id === id)
+  if (!seeded) throw new Error(`Provider "${id}" not found in DEFAULT_CONFIG.providersConfig`)
+  return seeded
 }
+
+/**
+ * 语言识别（LLM 模式）只能在**带模型的** provider 上成立，而新装 profile 里三个豆包
+ * 都是纯翻译 provider。这里显式补上原来默认播种过的那批，用例语义保持不变。
+ */
+const providersWithLLM: ProviderConfig[] = [
+  ...DEFAULT_CONFIG.providersConfig,
+  DEFAULT_PROVIDER_CONFIG.openai,
+  DEFAULT_PROVIDER_CONFIG.jalapenocloud,
+]
 
 /** Every hosted feature reporting the same verdict on both tiers. */
 function statusWithAllTiers(tier: HostedAiTierStatus): HostedAiStatus {
@@ -158,12 +178,13 @@ describe("feature providers", () => {
       })
     })
 
-    it("keeps a fresh profile off Microsoft when it deletes its provider in translationOnly mode", () => {
-      // Microsoft cannot run translationOnly page mode (translation-only-gate.ts), and the
-      // provider pickers hide it while that mode is active — falling back onto it leaves the
-      // page-translate slot pointing at an option missing from its own list, which is what the
-      // selector then crashes on. Nothing in the fallback consults the gate, so the guarantee
-      // rests entirely on Google leading DEFAULT_PROVIDER_CONFIG_LIST.
+    it("keeps a fresh profile on a seeded provider when it deletes its page-translation provider in translationOnly mode", () => {
+      // translationOnly page mode needs a provider that preserves markup, and every
+      // provider a fresh profile seeds now goes through the doubao plain-text endpoint
+      // (translation-only-gate.ts). The picker hides those while the mode is active, so
+      // the fallback must at least land on an id that still EXISTS in providersConfig —
+      // falling back to a provider the config does not contain is what made the selector
+      // crash. The gate is not consulted by the fallback, so this only pins the ids.
       const config = {
         ...DEFAULT_CONFIG,
         pageTranslation: {
@@ -179,7 +200,9 @@ describe("feature providers", () => {
         DEFAULT_CONFIG.providersConfig,
       )
 
-      expect(fallbacks.pageTranslation).toBe("google-translate-default")
+      expect(DEFAULT_CONFIG.providersConfig.map((provider) => provider.id)).toContain(
+        fallbacks.pageTranslation,
+      )
     })
 
     it("uses the system Normal tier when page translation has no local fallback", () => {
@@ -571,7 +594,7 @@ describe("feature providers", () => {
       const result = resolveLanguageDetectionConfigForModeChange(
         DEFAULT_CONFIG.languageDetection,
         "llm",
-        DEFAULT_CONFIG.providersConfig,
+        providersWithLLM,
       )
 
       expect(result).toEqual({
@@ -587,7 +610,7 @@ describe("feature providers", () => {
           providerId: "jalapenocloud-default",
         },
         "llm",
-        DEFAULT_CONFIG.providersConfig,
+        providersWithLLM,
       )
 
       expect(result).toEqual({

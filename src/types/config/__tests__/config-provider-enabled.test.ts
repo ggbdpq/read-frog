@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest"
 import { createDefaultDictionaryAction, DEFAULT_CONFIG } from "@/utils/constants/config"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { configSchema } from "../config"
+
+/**
+ * 二次开发后新装 profile 只播种三个豆包 provider（纯翻译），但「某个 provider 被禁用
+ * 时校验要不要报错」这组用例仍然需要一个**带模型、可被禁用的本地 provider**，以及
+ * 一个第二家翻译 provider。它们依然合法存在，只是不再默认播种 —— 显式补进配置里，
+ * 用例语义（校验逻辑）不变。
+ */
+const PROVIDERS = [
+  ...DEFAULT_CONFIG.providersConfig,
+  DEFAULT_PROVIDER_CONFIG.openai,
+  DEFAULT_PROVIDER_CONFIG["google-translate"],
+  DEFAULT_PROVIDER_CONFIG["microsoft-translate"],
+]
+
+const OPENAI_PROVIDER_ID = DEFAULT_PROVIDER_CONFIG.openai.id
+const GOOGLE_PROVIDER_ID = DEFAULT_PROVIDER_CONFIG["google-translate"].id
+/** 新装默认的页面翻译 provider（豆包 AI），用来测「启用的 provider」这条路径。 */
+const PAGE_PROVIDER_ID = DEFAULT_CONFIG.pageTranslation.providerId
 
 function getIssuePaths(input: unknown) {
   const result = configSchema.safeParse(input)
@@ -13,8 +32,8 @@ function getIssuePaths(input: unknown) {
 
 describe("config provider enabled validation", () => {
   it("fails when a built-in feature uses a disabled provider", () => {
-    const providersConfig = DEFAULT_CONFIG.providersConfig.map((provider) => {
-      if (provider.id === "microsoft-translate-default") {
+    const providersConfig = PROVIDERS.map((provider) => {
+      if (provider.id === PAGE_PROVIDER_ID) {
         return { ...provider, enabled: false }
       }
       return provider
@@ -33,8 +52,8 @@ describe("config provider enabled validation", () => {
     if (!action) {
       throw new Error("Dictionary definition missing")
     }
-    const providersConfig = DEFAULT_CONFIG.providersConfig.map((provider) => {
-      if (provider.id === "openai-default") {
+    const providersConfig = PROVIDERS.map((provider) => {
+      if (provider.id === OPENAI_PROVIDER_ID) {
         return { ...provider, enabled: false }
       }
       return provider
@@ -45,7 +64,7 @@ describe("config provider enabled validation", () => {
       providersConfig,
       selectionToolbar: {
         ...DEFAULT_CONFIG.selectionToolbar,
-        customActions: [{ ...action, id: "custom-action", providerId: "openai-default" }],
+        customActions: [{ ...action, id: "custom-action", providerId: OPENAI_PROVIDER_ID }],
       },
     })
 
@@ -53,8 +72,8 @@ describe("config provider enabled validation", () => {
   })
 
   it("fails when the built-in Dictionary uses a disabled provider", () => {
-    const providersConfig = DEFAULT_CONFIG.providersConfig.map((provider) =>
-      provider.id === "openai-default" ? { ...provider, enabled: false } : provider,
+    const providersConfig = PROVIDERS.map((provider) =>
+      provider.id === OPENAI_PROVIDER_ID ? { ...provider, enabled: false } : provider,
     )
     const issuePaths = getIssuePaths({
       ...DEFAULT_CONFIG,
@@ -64,7 +83,7 @@ describe("config provider enabled validation", () => {
         builtInActions: {
           dictionary: {
             ...DEFAULT_CONFIG.selectionToolbar.builtInActions.dictionary,
-            providerId: "openai-default",
+            providerId: OPENAI_PROVIDER_ID,
           },
         },
       },
@@ -126,8 +145,8 @@ describe("config provider enabled validation", () => {
   })
 
   it("rejects a disabled local provider for selection toolbar translation", () => {
-    const providersConfig = DEFAULT_CONFIG.providersConfig.map((provider) =>
-      provider.id === "google-translate-default" ? { ...provider, enabled: false } : provider,
+    const providersConfig = PROVIDERS.map((provider) =>
+      provider.id === GOOGLE_PROVIDER_ID ? { ...provider, enabled: false } : provider,
     )
     const issuePaths = getIssuePaths({
       ...DEFAULT_CONFIG,
@@ -138,7 +157,7 @@ describe("config provider enabled validation", () => {
           ...DEFAULT_CONFIG.selectionToolbar.features,
           translate: {
             ...DEFAULT_CONFIG.selectionToolbar.features.translate,
-            providerId: "google-translate-default",
+            providerId: GOOGLE_PROVIDER_ID,
           },
         },
       },

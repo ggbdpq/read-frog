@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react"
 import type { NoteSuggestionFireInput } from "../use-note-suggestion"
+import type { Config } from "@/types/config/config"
 import type { LLMProviderConfig } from "@/types/config/provider"
 import type { SelectionToolbarCustomAction } from "@/types/config/selection-toolbar"
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import { createStore, Provider } from "jotai"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { isLLMProviderConfig } from "@/types/config/provider"
+import { storage } from "#imports"
 import { configAtom } from "@/utils/atoms/config"
-import { DEFAULT_CONFIG } from "@/utils/constants/config"
+import { CONFIG_STORAGE_KEY, DEFAULT_CONFIG } from "@/utils/constants/config"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 
 const streamBackgroundNoteSuggestionMock = vi.fn<(...args: any[]) => any>()
 const validateNoteSuggestionMock = vi.fn<(...args: any[]) => any>()
@@ -38,10 +40,32 @@ function wrapper(store: ReturnType<typeof createStore>) {
   }
 }
 
-const LLM_PROVIDER_CONFIG = DEFAULT_CONFIG.providersConfig.find(
-  (providerConfig): providerConfig is LLMProviderConfig =>
-    isLLMProviderConfig(providerConfig) && providerConfig.provider === "openai",
-)!
+/**
+ * Note suggestion now ships switched off (the settings entry for it is gone), and
+ * the hook refuses to fire while that is so. Every case below is about what the
+ * hook does once the feature IS on, so they start from an explicitly enabled
+ * config instead of asserting the shipped default here.
+ */
+function noteSuggestionEnabledConfig(): Config {
+  const config = structuredClone(DEFAULT_CONFIG)
+  config.selectionToolbar.noteSuggestion.enabled = true
+  return config
+}
+
+/**
+ * `configAtom.onMount` re-reads the stored config, so seeding only the atom would
+ * be undone by the first storage refresh. Both sides get the same fixture.
+ */
+async function setConfigForTest(store: ReturnType<typeof createStore>, config: Config) {
+  await storage.setItem(`local:${CONFIG_STORAGE_KEY}`, config)
+  store.set(configAtom, config)
+}
+
+// A local LLM provider, built from the shipped default entry rather than read
+// out of `DEFAULT_CONFIG.providersConfig`: new installs ship only the three
+// Doubao translate services, so the default list no longer contains an LLM
+// provider for this fixture to borrow.
+const LLM_PROVIDER_CONFIG = structuredClone(DEFAULT_PROVIDER_CONFIG.openai) as LLMProviderConfig
 
 const LOCAL_PROVIDER_REF = {
   kind: "local",
@@ -130,7 +154,7 @@ describe("useNoteSuggestion", () => {
 
   it("re-fires and replaces the suggestion when the composite key changes, but not for the same key", async () => {
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     // First fire for key A → one request, suggestion tagged with A.
@@ -155,7 +179,7 @@ describe("useNoteSuggestion", () => {
 
   it("uses the user's provider for the request and classifies it in the result", async () => {
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0")))
@@ -176,7 +200,7 @@ describe("useNoteSuggestion", () => {
   it("sends the hosted payload for a system provider without local provider knobs", async () => {
     hostedStatusMock.mockResolvedValue(createHostedStatus(true))
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
@@ -204,7 +228,7 @@ describe("useNoteSuggestion", () => {
   it("classifies a system provider suggestion as Built-in AI", async () => {
     hostedStatusMock.mockResolvedValue(createHostedStatus(true))
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
@@ -219,7 +243,7 @@ describe("useNoteSuggestion", () => {
   it("skips silently and completes the session when the hosted tier is unavailable", async () => {
     hostedStatusMock.mockResolvedValue(createHostedStatus(false))
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
@@ -240,7 +264,7 @@ describe("useNoteSuggestion", () => {
   it("fails open and fires when the hosted status check itself fails", async () => {
     hostedStatusMock.mockRejectedValue(new Error("status endpoint down"))
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0", SYSTEM_PROVIDER_REF)))
@@ -251,10 +275,10 @@ describe("useNoteSuggestion", () => {
 
   it("uses the configured action snapshot even when the action is disabled", async () => {
     const store = createStore()
-    const config = structuredClone(DEFAULT_CONFIG)
+    const config = noteSuggestionEnabledConfig()
     config.selectionToolbar.builtInActions.dictionary.enabled = false
     config.selectionToolbar.customActions = []
-    store.set(configAtom, config)
+    await setConfigForTest(store, config)
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0")))
@@ -269,7 +293,7 @@ describe("useNoteSuggestion", () => {
 
   it("uses only the action configured for Note suggestion", async () => {
     const store = createStore()
-    const config = structuredClone(DEFAULT_CONFIG)
+    const config = noteSuggestionEnabledConfig()
     const customAction: SelectionToolbarCustomAction = {
       id: "custom-dictionary",
       name: "Custom Dictionary",
@@ -290,7 +314,7 @@ describe("useNoteSuggestion", () => {
     config.selectionToolbar.builtInActions.dictionary.enabled = false
     config.selectionToolbar.customActions = [customAction]
     config.selectionToolbar.noteSuggestion.actionId = customAction.id
-    store.set(configAtom, config)
+    await setConfigForTest(store, config)
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("disabled-built-in:lang:0")))
@@ -313,7 +337,7 @@ describe("useNoteSuggestion", () => {
   it("stays silent and completes the session when the request rejects", async () => {
     streamBackgroundNoteSuggestionMock.mockRejectedValue(new Error("provider exploded"))
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0")))
@@ -333,7 +357,7 @@ describe("useNoteSuggestion", () => {
   it("discards a schema/semantically invalid envelope without a card", async () => {
     validateNoteSuggestionMock.mockReturnValue(null)
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0")))
@@ -345,7 +369,7 @@ describe("useNoteSuggestion", () => {
   it("treats a valid empty-notes response as a success without a card", async () => {
     streamBackgroundNoteSuggestionMock.mockResolvedValue(EMPTY_NOTES_ENVELOPE)
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0")))
@@ -365,7 +389,7 @@ describe("useNoteSuggestion", () => {
       new Error("Stream disconnected unexpectedly"),
     )
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0")))
@@ -385,7 +409,7 @@ describe("useNoteSuggestion", () => {
       new DOMException("stream aborted", "AbortError"),
     )
     const store = createStore()
-    store.set(configAtom, DEFAULT_CONFIG)
+    await setConfigForTest(store, noteSuggestionEnabledConfig())
     const { result } = renderHook(() => useNoteSuggestion(), { wrapper: wrapper(store) })
 
     act(() => result.current.maybeFire(fireInput("1:lang:0")))

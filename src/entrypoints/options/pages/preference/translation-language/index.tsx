@@ -42,6 +42,8 @@ export function TranslationLanguageSection() {
           triggerSize="sm"
           className="text-sm"
           value={language.targetCode}
+          // Only the languages the translation backend can actually produce.
+          side="target"
           // No `autoLabel`, so the list holds real languages only — there is nothing for a
           // target to auto-detect from. The guard keeps the type honest.
           onValueChange={(targetCode) => {

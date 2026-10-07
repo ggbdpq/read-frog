@@ -74,6 +74,7 @@ export function LanguagesSection() {
           <LangSelect
             className="min-w-0 flex-1"
             value={inputTranslation.toLang}
+            side="target"
             onValueChange={(toLang) => {
               void setInputTranslation({ ...inputTranslation, toLang })
             }}

@@ -14,7 +14,7 @@ import { SessionCacheGroupRegistry } from "@/utils/session-cache/session-cache-g
 import { runAiSegmentSubtitles } from "./ai-segmentation"
 import { dispatchBackgroundStreamPort } from "./background-stream"
 import { initializeActionIcons, registerActionIconListeners } from "./browser-action-icon"
-import { ensureInitializedConfig, isFreshInstalledConfig } from "./config"
+import { ensureInitializedConfig } from "./config"
 import { setUpConfigBackup } from "./config-backup"
 import { initializeContextMenu, registerContextMenuListeners } from "./context-menu"
 import {
@@ -62,16 +62,18 @@ export default defineBackground({
         })
       }
 
-      // Deliberately last: probing Google Translate can hang for seconds on networks that
-      // block it, and nothing above should wait for that. Awaiting inside the listener
-      // keeps the service worker alive until the probe settles. Guarded by the config
-      // actually being new rather than by the install reason: reloading an unpacked
-      // extension reports "install" while the developer's provider choice is still in
-      // storage, and a config rebuilt from defaults after failing validation during an
-      // update deserves the same provider selection a fresh install gets.
-      if (await isFreshInstalledConfig()) {
-        await selectFreshTranslateProviders()
-      }
+      // Deliberately last: this reads and may rewrite the stored config, and nothing above
+      // should wait for it. Awaiting inside the listener keeps the service worker alive
+      // until it settles.
+      //
+      // Called unconditionally rather than behind `isFreshInstalledConfig()`: that guard is
+      // only true when the config was *rebuilt from defaults*, so an existing user whose
+      // stored config stayed valid would never get here — and would keep translating on the
+      // provider they had before this build, while the trimmed settings page lists only the
+      // three Doubao services. The function itself is one-shot and idempotent (guarded by
+      // its own storage flag) and only rewrites slots still sitting on a stock default, so
+      // running it on every startup costs one storage read once the flag is set.
+      await selectFreshTranslateProviders()
 
       // Clear blog cache on extension update to fetch latest blog posts
       if (details.reason === "update") {

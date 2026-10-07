@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { getSourceDocumentTitle } from "@/utils/content/document-title"
 import { PageTranslationManager } from "../page-translation"
 
@@ -145,11 +146,16 @@ describe("pageTranslationManager title handling", () => {
   })
 
   it("primes webpage context on start for AI-aware llm translation", async () => {
+    // New installs ship only the three Doubao translate services, which cannot
+    // generate the webpage context, so this test has to hand the config an LLM
+    // provider of its own instead of relying on one being in the default list.
+    const llmProvider = structuredClone(DEFAULT_PROVIDER_CONFIG.openai)
     mockGetLocalConfig.mockResolvedValue({
       ...DEFAULT_CONFIG,
+      providersConfig: [...DEFAULT_CONFIG.providersConfig, llmProvider],
       pageTranslation: {
         ...DEFAULT_CONFIG.pageTranslation,
-        providerId: "openai-default",
+        providerId: llmProvider.id,
         enableAIContentAware: true,
       },
     })

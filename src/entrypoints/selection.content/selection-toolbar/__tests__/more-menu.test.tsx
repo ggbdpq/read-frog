@@ -58,6 +58,8 @@ afterEach(() => {
 async function renderMenu(edit?: (config: Config) => void) {
   const store = createStore()
   const config = structuredClone(DEFAULT_CONFIG)
+  // 二次开发后的出厂默认把词典动作关了；这些用例测的是菜单机制，恢复它们编写时的开启状态。
+  config.selectionToolbar.builtInActions.dictionary.enabled = true
   edit?.(config)
   await fakeBrowser.storage.local.set({ [CONFIG_STORAGE_KEY]: config })
   store.set(configAtom, config)

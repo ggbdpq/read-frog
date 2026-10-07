@@ -2,6 +2,7 @@ import type { ProviderConfig } from "@/types/config/provider"
 import type { HostedAiStatus, HostedAiTierStatus } from "@/utils/hosted-ai/types"
 import { describe, expect, it } from "vitest"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import {
   getUsableProviderIdsForCapability,
   isDurablyUnusableTier,
@@ -38,9 +39,15 @@ function statusWith(normal: HostedAiTierStatus, advance = normal): HostedAiStatu
 }
 
 function providerById(id: string): ProviderConfig {
-  const provider = DEFAULT_CONFIG.providersConfig.find((item) => item.id === id)
-  if (!provider) throw new Error(`Provider "${id}" not found`)
-  return provider
+  const fromDefaultConfig = DEFAULT_CONFIG.providersConfig.find((item) => item.id === id)
+  if (fromDefaultConfig) {
+    return fromDefaultConfig
+  }
+  // 二次开发后新装 profile 只播种三个豆包 provider；这些用例描述的是「本地 provider
+  // 与内置 AI 的可用性判定」，所以按类型取默认配置补上，用例语义不变。
+  const seeded = Object.values(DEFAULT_PROVIDER_CONFIG).find((item) => item.id === id)
+  if (!seeded) throw new Error(`Provider "${id}" not found`)
+  return seeded
 }
 
 describe("isDurablyUnusableTier", () => {

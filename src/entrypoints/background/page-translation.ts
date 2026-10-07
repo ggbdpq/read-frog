@@ -1,5 +1,6 @@
 import type { WebPagePromptContext } from "@/types/content"
 import { browser } from "#imports"
+import { sanitizedDoubaoSceneSchema } from "@/types/doubao"
 import { isNoTranslationSentinel } from "@/utils/constants/prompt"
 import { cleanText } from "@/utils/content/utils"
 import { db } from "@/utils/db/dexie/db"
@@ -75,9 +76,19 @@ export function setupPageTranslationHandlers(): void {
         forceRetranslation = false,
         glossaryTerms,
         glossaryRevision,
+        doubaoScene,
       },
     } = message
     const scope = buildTranslationScopeKey(message.sender, sessionId)
+
+    // 信任边界：`doubaoScene` 合法（1–6 的数字）就原样透传，否则一律降级成
+    // 「未指定」再接回按功能推导。传 `"6"` 这类字符串在豆包那边就是 710010202
+    // 系统错误，但一个坏字段不该把整页翻译打死 —— 降级 + 由调用方推导是这里
+    // 正确的取舍。`sanitizedDoubaoSceneSchema` 显式拒绝字符串而不是强转。
+    const sanitizedDoubaoScene = sanitizedDoubaoSceneSchema.parse(doubaoScene)
+    if (doubaoScene !== undefined && sanitizedDoubaoScene === undefined) {
+      logger.warn(`[Doubao] 忽略非法的 doubaoScene 值：${JSON.stringify(doubaoScene)}`)
+    }
 
     const validateHtmlAttributeMarkers =
       textFormat === "html" && hasHtmlAttributeMarkerProtocol(text)
@@ -124,6 +135,8 @@ export function setupPageTranslationHandlers(): void {
         // `mergeBatchGlossaryTerms`.
         glossaryTerms,
         glossaryRevision,
+        // 豆包场景号：参加批次键（不同功能的场景号语义不同，不能混批）。
+        doubaoScene: sanitizedDoubaoScene,
         scope,
       }
       result = await batchQueue.enqueue(data)
@@ -138,6 +151,7 @@ export function setupPageTranslationHandlers(): void {
           textFormat,
           preserveLineBreaks,
           signal,
+          doubaoScene: sanitizedDoubaoScene,
         })
       result = await requestQueue.enqueue(thunk, scheduleAt, hash, scope ? [scope] : undefined)
     }

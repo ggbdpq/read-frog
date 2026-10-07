@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
 import { NO_TRANSLATION_SENTINEL } from "@/utils/constants/prompt"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { detectLanguage } from "@/utils/content/language"
 import { Sha256Hex } from "@/utils/hash"
 import { executeTranslate } from "@/utils/host/translate/execute-translate"
@@ -19,6 +20,17 @@ import {
 import { getTranslatePrompt } from "@/utils/prompts/translate"
 import { HostedAiProviderUnavailableError } from "@/utils/providers/provider-ref"
 import { isTranslationCancelledError } from "@/utils/request/cancellation"
+
+/**
+ * 二次开发后新装 profile 只有三个豆包 provider（纯翻译，无 LLM 通道）。本文件里
+ * 描述 AI 感知 / LLM provider 行为的用例仍然需要一个真实 LLM provider：
+ * `translateTextCore` 走的是 `isLLMProviderConfig` 分支，换成纯翻译 provider 就等于
+ * 把这些用例悄悄改成测别的东西了。所以显式把 openai 注册进配置，用例语义不变。
+ */
+const DEFAULT_CONFIG_WITH_LLM = {
+  ...DEFAULT_CONFIG,
+  providersConfig: [...DEFAULT_CONFIG.providersConfig, DEFAULT_PROVIDER_CONFIG.openai],
+}
 
 // Mock dependencies
 vi.mock("@/utils/config/storage", () => ({
@@ -330,7 +342,7 @@ describe("translate-text", () => {
   describe("translateTextForPageTitle", () => {
     it("should use the latest original title instead of document.title when building webpage context", async () => {
       const llmConfig = {
-        ...DEFAULT_CONFIG,
+        ...DEFAULT_CONFIG_WITH_LLM,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
           providerId: "openai-default",
@@ -364,7 +376,7 @@ describe("translate-text", () => {
 
     it("should include webpage content for AI-aware title translation", async () => {
       const llmConfig = {
-        ...DEFAULT_CONFIG,
+        ...DEFAULT_CONFIG_WITH_LLM,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
           providerId: "openai-default",
@@ -398,7 +410,7 @@ describe("translate-text", () => {
 
     it("should forward document.title to regular page translations", async () => {
       const llmConfig = {
-        ...DEFAULT_CONFIG,
+        ...DEFAULT_CONFIG_WITH_LLM,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
           providerId: "openai-default",
@@ -460,7 +472,7 @@ describe("translate-text", () => {
 
     it("includes webpage summary for AI-aware llm input translations", async () => {
       const llmConfig = {
-        ...DEFAULT_CONFIG,
+        ...DEFAULT_CONFIG_WITH_LLM,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
           enableAIContentAware: true,
@@ -499,7 +511,7 @@ describe("translate-text", () => {
 
     it("degrades to no summary when the optional summary hits a hosted denial", async () => {
       mockGetConfigFromStorage.mockResolvedValue({
-        ...DEFAULT_CONFIG,
+        ...DEFAULT_CONFIG_WITH_LLM,
         pageTranslation: {
           ...DEFAULT_CONFIG.pageTranslation,
           enableAIContentAware: true,
@@ -537,7 +549,7 @@ describe("translate-text", () => {
     // wrong route once made page translation gate on the input-translation
     // quota (and bypass the session's provider-ref snapshot).
     const llmAiAwareConfig = {
-      ...DEFAULT_CONFIG,
+      ...DEFAULT_CONFIG_WITH_LLM,
       pageTranslation: {
         ...DEFAULT_CONFIG.pageTranslation,
         providerId: "openai-default",

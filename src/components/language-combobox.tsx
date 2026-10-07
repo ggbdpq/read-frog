@@ -37,6 +37,12 @@ interface LanguageComboboxProps<T extends string> {
   detectedLangCode?: LangCodeISO6393
   /** Offers auto under a fixed name, for callers with no page to detect a language from. */
   autoLabel?: string
+  /**
+   * Which side of the pair this editor sets. A target offers only what the translation
+   * backend can actually produce; a source offers every language the page might be written
+   * in. Ignored when `items` is passed, since those rows are already the caller's decision.
+   */
+  side?: "source" | "target"
   placeholder?: string
   /** The trigger's size, as a `Button` variant — `sm` matches the settings selects. */
   triggerSize?: ComponentProps<typeof Button>["size"]
@@ -49,6 +55,7 @@ export function LanguageCombobox<T extends string = LangCodeISO6393 | "auto">({
   items,
   detectedLangCode,
   autoLabel,
+  side = "source",
   placeholder,
   triggerSize,
   className,
@@ -59,8 +66,8 @@ export function LanguageCombobox<T extends string = LangCodeISO6393 | "auto">({
     // default `T`. A caller whose values are anything else — the glossary's
     // `all` — has to pass `items`, because there are no rows this branch could
     // build for it.
-    return getLanguageItems(detectedLangCode, autoLabel) as LanguageItem<T>[]
-  }, [items, detectedLangCode, autoLabel])
+    return getLanguageItems(detectedLangCode, autoLabel, side) as LanguageItem<T>[]
+  }, [items, detectedLangCode, autoLabel, side])
 
   return (
     <Combobox

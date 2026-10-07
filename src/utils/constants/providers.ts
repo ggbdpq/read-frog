@@ -31,6 +31,13 @@ import {
   isCustomModelOnlyProvider,
 } from "@/types/config/provider"
 import { omit, pick } from "@/types/utils"
+import {
+  DOUBAO_ORIGIN,
+  DOUBAO_PROVIDER_DESCRIPTIONS,
+  DOUBAO_PROVIDER_LABELS,
+  getDoubaoProviderId,
+  isDoubaoProviderType,
+} from "@/utils/constants/doubao"
 import { i18n } from "@/utils/i18n"
 import { getLobeIconsCDNUrlFn } from "../logo"
 
@@ -206,6 +213,23 @@ export const PROVIDER_ITEMS: Record<
     logo: getLobeIconsCDNUrlFn("google-color"),
     name: NON_API_TRANSLATE_PROVIDERS_MAP["google-translate"],
     website: "https://translate.google.com",
+  },
+  // 二次开发：三个豆包服务共用豆包图标（同一家的三个引擎），
+  // 视觉区分交给带引擎名的中文文案，不去换图标。
+  "doubao-huoshan": {
+    logo: getLobeIconsCDNUrlFn("doubao-color"),
+    name: DOUBAO_PROVIDER_LABELS["doubao-huoshan"],
+    website: DOUBAO_ORIGIN,
+  },
+  "doubao-llm": {
+    logo: getLobeIconsCDNUrlFn("doubao-color"),
+    name: DOUBAO_PROVIDER_LABELS["doubao-llm"],
+    website: DOUBAO_ORIGIN,
+  },
+  "doubao-microsoft": {
+    logo: getLobeIconsCDNUrlFn("doubao-color"),
+    name: DOUBAO_PROVIDER_LABELS["doubao-microsoft"],
+    website: DOUBAO_ORIGIN,
   },
   deeplx: {
     logo: (theme: Theme) => (theme === "light" ? deeplxLogoLight : deeplxLogoDark),
@@ -385,6 +409,33 @@ export const DEFAULT_PROVIDER_CONFIG = {
     name: PROVIDER_ITEMS["microsoft-translate"].name,
     enabled: true,
     provider: "microsoft-translate",
+  },
+  // 二次开发：三个豆包服务的默认条目。
+  //
+  // `description` 是**静态中文文案**而不是 `options.apiProviders...` 的 i18n key：
+  // 这三个 provider 是本仓库自己加的，词条不在 locales 里（那属于 UI 同事的写作用域），
+  // 而「新装必须有描述」是测试钉住的行为。`buildDefaultProviderConfigList` 只在
+  // i18n 返回非空时才覆盖它，所以这里的文案不会被空字符串顶掉。
+  "doubao-huoshan": {
+    id: getDoubaoProviderId("doubao-huoshan"),
+    name: DOUBAO_PROVIDER_LABELS["doubao-huoshan"],
+    description: DOUBAO_PROVIDER_DESCRIPTIONS["doubao-huoshan"],
+    enabled: true,
+    provider: "doubao-huoshan",
+  },
+  "doubao-llm": {
+    id: getDoubaoProviderId("doubao-llm"),
+    name: DOUBAO_PROVIDER_LABELS["doubao-llm"],
+    description: DOUBAO_PROVIDER_DESCRIPTIONS["doubao-llm"],
+    enabled: true,
+    provider: "doubao-llm",
+  },
+  "doubao-microsoft": {
+    id: getDoubaoProviderId("doubao-microsoft"),
+    name: DOUBAO_PROVIDER_LABELS["doubao-microsoft"],
+    description: DOUBAO_PROVIDER_DESCRIPTIONS["doubao-microsoft"],
+    enabled: true,
+    provider: "doubao-microsoft",
   },
   jalapenocloud: {
     id: "jalapenocloud-default",
@@ -697,16 +748,28 @@ export const PROVIDER_URL_PLACEHOLDERS: Partial<Record<APIProviderTypes, string>
   huggingface: "https://router.huggingface.co/v1",
 }
 
+/**
+ * 新装 profile 里**恰好**这三个 provider，顺序也就是契约里的顺序
+ * （火山 → 豆包 AI → 微软）。
+ *
+ * 二次开发的核心落点：「默认连通且只保留三个翻译服务」。其它 provider 类型仍然
+ * 注册在 `PROVIDER_ITEMS` / `DEFAULT_PROVIDER_CONFIG` 里（删掉会引发全仓类型级联），
+ * 但它们不再出现在新装配置中；用户手动添加的路径由 UI 层控制。
+ */
 export const DEFAULT_PROVIDER_CONFIG_LIST: ProvidersConfig = [
-  DEFAULT_PROVIDER_CONFIG["google-translate"],
-  DEFAULT_PROVIDER_CONFIG["microsoft-translate"],
-  DEFAULT_PROVIDER_CONFIG.openai,
-  DEFAULT_PROVIDER_CONFIG.jalapenocloud,
-  DEFAULT_PROVIDER_CONFIG.deepseek,
+  DEFAULT_PROVIDER_CONFIG["doubao-huoshan"],
+  DEFAULT_PROVIDER_CONFIG["doubao-llm"],
+  DEFAULT_PROVIDER_CONFIG["doubao-microsoft"],
 ]
 
 /** Resolve a provider's default description in the active interface language. */
 export function getDefaultProviderDescription(providerType: APIProviderTypes): string | undefined {
+  // 豆包三个服务是我们自己加的 provider：locales 里没有对应词条（那属于 UI 侧），
+  // 而 i18n 对缺失 key 会原样回显 key —— 那不是描述文案，必须当成「没有」。
+  if (isDoubaoProviderType(providerType)) {
+    return DOUBAO_PROVIDER_DESCRIPTIONS[providerType]
+  }
+
   const descriptionKey = camelCase(providerType)
   const description = i18n.t(
     `options.apiProviders.providers.description.${descriptionKey}` as never,

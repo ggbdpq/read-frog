@@ -66,6 +66,14 @@ const PROVIDER_DESCRIPTIONS: Record<string, string> = {
     "Alibaba Cloud's Qwen model series with advanced reasoning and multilingual capabilities",
   moonshotai: "Moonshot AI's Kimi model series with strong reasoning and long-context capabilities",
   huggingface: "Hugging Face Inference API providing access to thousands of open-source models",
+  // 二次开发新增的三个豆包原生翻译服务。它们的文案本来由
+  // `DEFAULT_PROVIDER_CONFIG[type].description` 静态提供（locales 里没有对应词条），
+  // 但这个文件是**冻结快照**、不 import 会演进的应用代码，所以按本文件的既有规矩
+  // 把英文原样抄一份进来 —— 否则「已存在的用户配置里恰好有豆包 provider 且没有描述」
+  // 这一条会漏掉。
+  "doubao-huoshan": "Volcengine machine translation — fastest, best for everyday pages",
+  "doubao-llm": "Doubao LLM translation — most accurate for papers and technical documents",
+  "doubao-microsoft": "Microsoft translation",
 }
 
 function isObject(value: any): value is Record<string, any> {

@@ -23,6 +23,11 @@ export const TRANSLATE_PROVIDER_TYPES = [
   "microsoft-translate",
   "deeplx",
   "deepl",
+  // 二次开发：豆包原生翻译的三个引擎。它们不是 LLM provider（没有模型、没有
+  // API Key），所以只出现在 PURE_TRANSLATE_PROVIDERS 里。
+  "doubao-huoshan",
+  "doubao-llm",
+  "doubao-microsoft",
   "openai",
   "deepseek",
   "google",
@@ -198,6 +203,9 @@ export const API_PROVIDER_TYPES = [
   "xai",
   "deeplx",
   "deepl",
+  "doubao-huoshan",
+  "doubao-llm",
+  "doubao-microsoft",
   "azure",
   "bedrock",
   "groq",
@@ -213,15 +221,28 @@ export const API_PROVIDER_TYPES = [
   "alibaba",
   "moonshotai",
   "huggingface",
-] as const satisfies Readonly<(keyof typeof LLM_PROVIDER_MODELS | "deeplx" | "deepl")[]>
+] as const satisfies Readonly<
+  (keyof typeof LLM_PROVIDER_MODELS | (typeof PURE_TRANSLATE_PROVIDERS)[number])[]
+>
 export type APIProviderTypes = (typeof API_PROVIDER_TYPES)[number]
 export function isAPIProvider(provider: string): provider is APIProviderTypes {
   return API_PROVIDER_TYPES.includes(provider)
 }
 
-export const PURE_API_PROVIDER_TYPES = ["deeplx", "deepl"] as const satisfies Readonly<
-  Exclude<APIProviderTypes, LLMProviderTypes>[]
->
+/**
+ * API provider 里**不带模型**的那一类：端点 + 目标语言码就够。
+ *
+ * 豆包三个引擎在这里而不是在 `LLM_PROVIDER_TYPES` 里，这是刻意的 ——
+ * `executeTranslate` 先判 `isNonAPIProvider`、再判 `isPureAPIProvider`、
+ * 最后才判 `isLLMProviderConfig`，放错一层就会去走 LLM prompt 通道。
+ */
+export const PURE_API_PROVIDER_TYPES = [
+  "deeplx",
+  "deepl",
+  "doubao-huoshan",
+  "doubao-llm",
+  "doubao-microsoft",
+] as const satisfies Readonly<Exclude<APIProviderTypes, LLMProviderTypes>[]>
 export type PureAPIProviderTypes = (typeof PURE_API_PROVIDER_TYPES)[number]
 export function isPureAPIProvider(provider: string): provider is PureAPIProviderTypes {
   return PURE_API_PROVIDER_TYPES.includes(provider)
@@ -238,6 +259,9 @@ export const ALL_PROVIDER_TYPES = [
   "microsoft-translate",
   "deeplx",
   "deepl",
+  "doubao-huoshan",
+  "doubao-llm",
+  "doubao-microsoft",
   "openai-compatible",
   "open-responses",
   "jalapenocloud",

@@ -4,6 +4,7 @@ import type { Config } from "@/types/config/config"
 import { createStore } from "jotai"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { configAtom, writeConfigAtom } from "../config"
 import { patchActionConfigAtom, patchProviderConfigAtom } from "../entity-config"
 import { storageAdapter } from "../storage-adapter"
@@ -42,7 +43,15 @@ function mountStore() {
 
 describe("config persistence and invalidation", () => {
   beforeEach(() => {
-    storage.value = structuredClone(DEFAULT_CONFIG)
+    // 二次开发后新装 profile 只播种三个豆包 provider（纯翻译）；这些用例描述的是
+    // 「用户编辑过的 provider 行」的读写语义，所以显式注册一个带模型的 provider。
+    storage.value = {
+      ...structuredClone(DEFAULT_CONFIG),
+      providersConfig: [
+        ...structuredClone(DEFAULT_CONFIG.providersConfig),
+        structuredClone(DEFAULT_PROVIDER_CONFIG.openai),
+      ],
+    }
     vi.mocked(storageAdapter.get).mockClear()
     vi.mocked(storageAdapter.set).mockClear()
     vi.mocked(storageAdapter.setMeta).mockClear()

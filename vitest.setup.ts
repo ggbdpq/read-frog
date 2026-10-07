@@ -137,19 +137,50 @@ if (typeof Range !== "undefined" && typeof Range.prototype.getBoundingClientRect
 // TextEncoder produces Uint8Array objects that are _different_ from the global
 // Uint8Array objects, so some functions that compare their types explode.
 // https://github.com/vitest-dev/vitest/issues/4043#issuecomment-1905172846
+//
+// The reimplementation below is deliberately explicit about UTF-8 rather than
+// derived from `decodeURIComponent(encodeURIComponent(input))`: that shortcut
+// (the one this file used to carry) writes **one byte per UTF-16 code unit**,
+// i.e. `charCode & 0xff`, so every non-ASCII character is silently corrupted —
+// `encode("A你B")` produced `[65, 96, 66]` instead of `[65, 228, 189, 160, 66]`.
+// That fails in both directions and is the worst kind of test-infrastructure
+// bug: assertions over Chinese text passed on mangled bytes (false green),
+// while byte-accurate consumers like undici/fetch rejected the same input
+// (false red). This repo translates Chinese, so the encoder has to be right.
 class ESBuildAndJSDOMCompatibleTextEncoder extends TextEncoder {
   override encode(input: string) {
     if (typeof input !== "string") {
       throw new TypeError("`input` must be a string")
     }
 
-    const decodedURI = decodeURIComponent(encodeURIComponent(input))
-    const arr = new Uint8Array(decodedURI.length)
-    const chars = decodedURI.split("")
-    for (let i = 0; i < chars.length; i++) {
-      arr[i] = decodedURI[i]!.charCodeAt(0)
+    // Iterate by code point (`for..of`), not by code unit, so surrogate pairs
+    // encode as the single 4-byte sequence they are rather than as two
+    // lone-surrogate 3-byte sequences.
+    const bytes: number[] = []
+    for (const char of input) {
+      const codePoint = char.codePointAt(0)!
+      if (codePoint < 0x80) {
+        bytes.push(codePoint)
+      } else if (codePoint < 0x800) {
+        bytes.push(0xc0 | (codePoint >> 6), 0x80 | (codePoint & 0x3f))
+      } else if (codePoint < 0x10000) {
+        bytes.push(
+          0xe0 | (codePoint >> 12),
+          0x80 | ((codePoint >> 6) & 0x3f),
+          0x80 | (codePoint & 0x3f),
+        )
+      } else {
+        bytes.push(
+          0xf0 | (codePoint >> 18),
+          0x80 | ((codePoint >> 12) & 0x3f),
+          0x80 | ((codePoint >> 6) & 0x3f),
+          0x80 | (codePoint & 0x3f),
+        )
+      }
     }
-    return arr
+    // Constructed from the test realm's global `Uint8Array` on purpose — that
+    // is the whole point of this shim (see the issue link above).
+    return new Uint8Array(bytes)
   }
 }
 

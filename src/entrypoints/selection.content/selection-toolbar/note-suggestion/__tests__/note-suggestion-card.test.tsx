@@ -301,7 +301,9 @@ describe("NoteSuggestionCard", () => {
     fireEvent.click(screen.getByRole("switch"))
 
     const expectedNoteSuggestion = {
-      enabled: false,
+      // The switch writes the value it flipped to; asserting the opposite of the
+      // shipped default keeps this an interaction test, not a default-value test.
+      enabled: !DEFAULT_CONFIG.selectionToolbar.noteSuggestion.enabled,
       actionId: action.id,
       providerId: DEFAULT_CONFIG.selectionToolbar.noteSuggestion.providerId,
     }

@@ -1,6 +1,7 @@
 import type { SerializableProviderRef } from "@/utils/providers/provider-ref"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_CONFIG } from "@/utils/constants/config"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 
 const getLocalConfigMock = vi.fn<(...args: any[]) => any>()
 const sendMessageMock = vi.fn<(...args: any[]) => any>()
@@ -36,13 +37,16 @@ describe("subtitles translator", () => {
 
     getLocalConfigMock.mockResolvedValue({
       ...DEFAULT_CONFIG,
+      // 二次开发后新装 profile 只播种三个豆包 provider（纯翻译）。字幕侧用例描述的是
+      // 「带模型的 provider + AI 感知上下文」的行为，所以显式注册 openai，语义不变。
+      providersConfig: [...DEFAULT_CONFIG.providersConfig, DEFAULT_PROVIDER_CONFIG.openai],
       pageTranslation: {
         ...DEFAULT_CONFIG.pageTranslation,
         enableAIContentAware: true,
       },
       videoSubtitles: {
         ...DEFAULT_CONFIG.videoSubtitles,
-        providerId: "openai-default",
+        providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
       },
     })
 
@@ -139,13 +143,14 @@ describe("subtitles translator", () => {
 
     getLocalConfigMock.mockResolvedValueOnce({
       ...DEFAULT_CONFIG,
+      providersConfig: [...DEFAULT_CONFIG.providersConfig, DEFAULT_PROVIDER_CONFIG.openai],
       pageTranslation: {
         ...DEFAULT_CONFIG.pageTranslation,
         enableAIContentAware: false,
       },
       videoSubtitles: {
         ...DEFAULT_CONFIG.videoSubtitles,
-        providerId: "openai-default",
+        providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
       },
     })
 
@@ -174,13 +179,14 @@ describe("subtitles translator", () => {
   it("passes title and description when AI content awareness is disabled", async () => {
     getLocalConfigMock.mockResolvedValueOnce({
       ...DEFAULT_CONFIG,
+      providersConfig: [...DEFAULT_CONFIG.providersConfig, DEFAULT_PROVIDER_CONFIG.openai],
       pageTranslation: {
         ...DEFAULT_CONFIG.pageTranslation,
         enableAIContentAware: false,
       },
       videoSubtitles: {
         ...DEFAULT_CONFIG.videoSubtitles,
-        providerId: "openai-default",
+        providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
       },
     })
     const { translateSubtitles } = await import("../translator")
@@ -213,8 +219,12 @@ describe("subtitles translator", () => {
     const { fetchSubtitlesSummary, translateSubtitles } = await import("../translator")
     const configSnapshot = {
       ...DEFAULT_CONFIG,
+      providersConfig: [...DEFAULT_CONFIG.providersConfig, DEFAULT_PROVIDER_CONFIG.openai],
       pageTranslation: { ...DEFAULT_CONFIG.pageTranslation, enableAIContentAware: true },
-      videoSubtitles: { ...DEFAULT_CONFIG.videoSubtitles, providerId: "openai-default" },
+      videoSubtitles: {
+        ...DEFAULT_CONFIG.videoSubtitles,
+        providerId: DEFAULT_PROVIDER_CONFIG.openai.id,
+      },
     }
     const videoContext = { videoTitle: "Video title", subtitlesTextContent: "subtitle transcript" }
 

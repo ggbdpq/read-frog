@@ -1,5 +1,5 @@
 import type { InputTranslationLang } from "@/types/config/config"
-import { langCodeISO6393Schema } from "@read-frog/definitions"
+import { getAllLanguageItems, getTargetLanguageItems } from "@/components/language-combobox-options"
 import {
   Select,
   SelectContent,
@@ -16,18 +16,26 @@ import { SELECT_CONTENT_PROPS } from "../../../components/select-content-props"
  * One side of the pair, at the size every other settings select renders at. The caller sizes
  * the trigger — the label it has to hold is a language's name, which the caller knows more
  * about fitting than this does.
+ *
+ * `side` picks the language rows: the target side offers only what the translation backend can
+ * produce, the source side offers every language the text might be written in. The two pinned
+ * rows (`sourceCode` / `targetCode`) are not languages themselves and stay on both.
  */
 export function LangSelect({
   value,
   onValueChange,
   getDisplayLabel,
+  side = "source",
   className,
 }: {
   value: InputTranslationLang
   onValueChange: (value: InputTranslationLang) => void
   getDisplayLabel: (value: InputTranslationLang) => string
+  side?: "source" | "target"
   className?: string
 }) {
+  const languageItems = side === "target" ? getTargetLanguageItems() : getAllLanguageItems()
+
   return (
     <Select value={value} onValueChange={(v) => onValueChange(v as InputTranslationLang)}>
       <SelectTrigger size="sm" className={cn("w-full min-w-0", className)}>
@@ -39,9 +47,9 @@ export function LangSelect({
         <SelectGroup>
           <SelectItem value="targetCode">{getDisplayLabel("targetCode")}</SelectItem>
           <SelectItem value="sourceCode">{getDisplayLabel("sourceCode")}</SelectItem>
-          {langCodeISO6393Schema.options.map((code) => (
-            <SelectItem key={code} value={code}>
-              {getLanguageLabel(code)}
+          {languageItems.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {getLanguageLabel(item.value)}
             </SelectItem>
           ))}
         </SelectGroup>

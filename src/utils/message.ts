@@ -131,6 +131,16 @@ interface ProtocolMap {
       // message arrival order, which is a coin flip. See
       // `mergeBatchGlossaryTerms`.
       glossaryRevision?: number
+      /**
+       * 豆包 `scene`（**数字** 1–6）。发送方按功能推导；悬停翻译跑在划词通道上，
+       * 必须显式传 `DOUBAO_SCENES.hover`（6），否则推导出来是 3。
+       *
+       * 只有豆包三个 provider 读它，其它 provider 忽略。类型是 `number` 而不是
+       * `DoubaoScene`：这条 payload 是跨进程的信任边界，线上校验在
+       * `optionalDoubaoSceneSchema` / `sanitizedDoubaoSceneSchema`（`@/types/doubao`），
+       * 后台用后者把非法值降级成「未指定」—— 一个坏字段不该把整批请求打死。
+       */
+      doubaoScene?: number
     },
   ) => Promise<string>
   // Drain queued/in-flight page-translation requests of one session (#1881).

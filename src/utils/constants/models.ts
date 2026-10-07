@@ -470,11 +470,22 @@ export const NON_API_TRANSLATE_PROVIDERS_MAP: Record<
   "microsoft-translate": "Microsoft Translator",
 }
 
+/**
+ * 「纯翻译」provider：只要一个端点 + 目标语言码，不走 LLM prompt 通道。
+ *
+ * 二次开发：豆包三个引擎（火山 / 豆包 AI / 微软）都打豆包原生
+ * `stream_article_translate`，没有模型可选、不需要 API Key，所以它们是纯翻译
+ * provider 而不是 LLM provider —— 这条分类直接决定 `executeTranslate` 走哪条分支
+ * （`isPureAPIProvider` 分支而不是 `isLLMProviderConfig` 分支）。
+ */
 export const PURE_TRANSLATE_PROVIDERS = [
   "google-translate",
   "microsoft-translate",
   "deeplx",
   "deepl",
+  "doubao-huoshan",
+  "doubao-llm",
+  "doubao-microsoft",
 ] as const
 
 const OPENAI_GPT5_REASONING_EFFORT_POLICIES: OpenAIGPT5ReasoningEffortPolicy[] = [

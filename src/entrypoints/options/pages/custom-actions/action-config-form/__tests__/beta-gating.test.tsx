@@ -123,7 +123,8 @@ describe("customActionConfigForm notebase availability", () => {
     })
     const duplicated = store.get(configAtom).selectionToolbar.customActions[0]!
     expect(duplicated).toMatchObject({
-      enabled: true,
+      // The copy inherits the built-in action's own switch, which ships off.
+      enabled: config.selectionToolbar.builtInActions.dictionary.enabled,
       providerId: config.selectionToolbar.builtInActions.dictionary.providerId,
       notebaseConnection: config.selectionToolbar.builtInActions.dictionary.notebaseConnection,
     })

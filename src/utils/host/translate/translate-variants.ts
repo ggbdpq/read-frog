@@ -13,6 +13,7 @@ import {
 } from "@/utils/providers/provider-ref"
 import { resolveProviderRefForCapability } from "@/utils/providers/provider-registry"
 import { getLocalConfig } from "../../config/storage"
+import { getNodeTranslationScene } from "./node-translation-scene"
 import { shouldSkipAsTargetLanguage } from "./target-language-skip"
 import { prepareTranslationText } from "./text-preparation"
 import {
@@ -102,6 +103,11 @@ async function translateTextUsingPageConfig(
     // Session captured at pipeline entry by the caller; see translateTextForPage.
     sessionId?: string
     forceRetranslation?: boolean
+    /**
+     * 豆包 `scene` 的显式覆盖值。悬停/节点翻译通过模块级上下文提供（见
+     * `node-translation-scene.ts`）；显式参数优先于上下文。
+     */
+    doubaoScene?: number
   } = {},
 ): Promise<string> {
   const preparedText = prepareTranslationText(text)
@@ -145,6 +151,10 @@ async function translateTextUsingPageConfig(
     preserveLineBreaks: options.preserveLineBreaks,
     sessionId: options.sessionId,
     forceRetranslation: options.forceRetranslation,
+    // 悬停/节点翻译的场景号来自本帧的模块级上下文；普通整页翻译没有上下文时这里
+    // 是 `undefined`，由 `resolveDoubaoScene(hostedFeature)` 推导出 1（整页）。
+    // 也就是说：**整页翻译的默认行为与本次改动之前完全一致**。
+    doubaoScene: options.doubaoScene ?? getNodeTranslationScene(),
   })
 }
 

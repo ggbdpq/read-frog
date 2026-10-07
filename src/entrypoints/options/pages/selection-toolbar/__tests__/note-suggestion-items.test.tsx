@@ -214,11 +214,13 @@ describe("NoteSuggestionItems", () => {
 
     fireEvent.click(screen.getByRole("switch"))
 
+    // The switch writes the value it flipped to, so the expectation follows the
+    // shipped default instead of hard-coding whichever side it started on.
     expect(setSelectionToolbarMock).toHaveBeenCalledWith({
       ...selectionToolbar,
       noteSuggestion: {
         ...selectionToolbar.noteSuggestion,
-        enabled: false,
+        enabled: !selectionToolbar.noteSuggestion.enabled,
       },
     })
   })

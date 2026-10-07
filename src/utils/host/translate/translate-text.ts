@@ -11,6 +11,7 @@ import { LANG_CODE_TO_EN_NAME } from "@read-frog/definitions"
 import { toastManager } from "@/components/ui/base-ui/toast"
 import { isAPIProviderConfig, isLLMProviderConfig } from "@/types/config/provider"
 import { classifyResolvedProvider } from "@/utils/analytics-provider"
+import { isDoubaoProviderType } from "@/utils/constants/doubao"
 import { isNoTranslationSentinel } from "@/utils/constants/prompt"
 import { detectLanguage } from "@/utils/content/language"
 import { resolveGlossaryTerms } from "@/utils/glossary/active-matcher"
@@ -23,6 +24,7 @@ import { resolveProviderRefForCapability } from "@/utils/providers/provider-regi
 import { TranslationCancelledError } from "@/utils/request/cancellation"
 import { Sha256Hex } from "../../hash"
 import { sendMessage } from "../../message"
+import { resolveDoubaoScene } from "./api/doubao"
 import { getInMemoryTranslation, storeInMemoryTranslation } from "./in-memory-translation-cache"
 import { prepareTranslationText } from "./text-preparation"
 import {
@@ -306,6 +308,15 @@ export interface TranslateTextOptions {
    * and bill against the wrong quota.
    */
   hostedFeature: HostedAiTextStreamRoute
+  /**
+   * 豆包 `scene` 的显式覆盖值（1–6 的数字）。只对豆包三个 provider 有效，未指定时
+   * 由 `resolveDoubaoScene(hostedFeature)` 按功能推导；悬停翻译跑在划词通道上，
+   * 必须显式传 `DOUBAO_SCENES.hover`（6）。
+   *
+   * 线上校验放在 `optionalDoubaoSceneSchema`（`@/types/doubao`）：这里先过一遍是为了
+   * 在发送侧就把 `"6"` 这种字符串挡住，而不是让它跑到服务端变成 `710010202`。
+   */
+  doubaoScene?: number
 }
 
 /**
@@ -326,6 +337,7 @@ export async function translateTextCore(options: TranslateTextOptions): Promise<
     forceRetranslation = false,
     glossaryEnabled = false,
     hostedFeature,
+    doubaoScene,
   } = options
 
   const preparedText = prepareTranslationText(text)
@@ -428,6 +440,10 @@ export async function translateTextCore(options: TranslateTextOptions): Promise<
     glossaryTerms,
     glossaryRevision,
     hostedFeature,
+    // 显式覆盖优先，没有就按功能推导（整页 1 / 划词 3 / 输入 2 / 字幕 2）。
+    // 后台会再用 `sanitizedDoubaoSceneSchema` 过一遍，非法值降级成「未指定」
+    // 而不是让整批请求失败 —— 一个坏字段不该打死整页翻译。
+    doubaoScene: resolveDoubaoScene(hostedFeature, doubaoScene),
   })
   if (sessionId !== undefined) {
     // Raw result, sentinel included, so a "no translation needed" verdict is
@@ -461,11 +477,21 @@ export function validateTranslationConfigAndToast(
     return false
   }
 
-  // check if the API key is configured
+  // 二次开发：豆包三个服务不需要 API Key —— 鉴权是 doubao.com 的登录 Cookie，
+  // 所以这里豁免 apiKey 校验。
+  //
+  // 为什么**不**在这里拦「未登录」：这是一个同步函数，而登录态要异步读（保存的
+  // Cookie 记录 + 浏览器 jar）。在真实扩展里「读不到」并不等于「没登录」——
+  // 用户可能只是没在本页点过「获取 Cookie」，jar 里其实有登录态。在这里拦下来会
+  // 把能用的翻译弄坏。真正的登录态判定交给两处权威来源：
+  //   1. 「豆包账号」页的鉴权探针（`probeDoubaoAuth`）；
+  //   2. 请求本身 —— 未登录必然返回 710012001，客户端会把它翻成
+  //      「请到『豆包账号』页登录」的中文错误，绝不静默失败。
   if (
     provider.kind === "local" &&
     isAPIProviderConfig(provider.config) &&
     !provider.config.apiKey?.trim() &&
+    !isDoubaoProviderType(provider.config.provider) &&
     !["deeplx", "ollama"].includes(provider.config.provider)
   ) {
     toastManager.add({ type: "error", title: i18n.t("noAPIKeyConfig.warning") })

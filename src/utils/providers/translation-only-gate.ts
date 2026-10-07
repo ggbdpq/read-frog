@@ -16,8 +16,21 @@ import { i18n } from "@/utils/i18n"
  * This list is the whole knob. Every mode control renders its reason through
  * `getTranslationOnlyBlockedReason`, which names the provider from PROVIDER_ITEMS,
  * so adding one here needs no UI change and no new copy.
+ *
+ * The three doubao services belong here for the same reason Microsoft does, with
+ * one difference: Microsoft was measured. `stream_article_translate` is a
+ * plain-text endpoint and we have NO evidence either way about whether it keeps
+ * `data-rf-attr` markers intact — so it is treated as unsafe, because being wrong
+ * corrupts a whole page, while being blocked only removes one page mode on three
+ * providers. Revisit only with a live round-trip proving the marker protocol
+ * survives.
  */
-const PROVIDERS_WITHOUT_MARKUP_SUPPORT: readonly AllProviderTypes[] = ["microsoft-translate"]
+const PROVIDERS_WITHOUT_MARKUP_SUPPORT: readonly AllProviderTypes[] = [
+  "microsoft-translate",
+  "doubao-huoshan",
+  "doubao-llm",
+  "doubao-microsoft",
+]
 
 const providersWithoutMarkupSupport: ReadonlySet<string> = new Set(PROVIDERS_WITHOUT_MARKUP_SUPPORT)
 

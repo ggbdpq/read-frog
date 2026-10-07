@@ -57,6 +57,11 @@ describe("video subtitles page sections", () => {
   })
 
   it("writes each switch on its own, leaving the other two alone", () => {
+    // Asserted against the value the switch starts on rather than a literal, so
+    // a change to the shipped default (video subtitles now start off) does not
+    // turn this interaction test red again.
+    const { enabled: enabledBeforeClick } = testState.videoSubtitles!
+
     renderInRouter(<PreferenceSection />)
 
     const [enable, autoStart, aiSegmentation] = screen.getAllByRole("switch")
@@ -65,7 +70,7 @@ describe("video subtitles page sections", () => {
     expect(setVideoSubtitlesMock).toHaveBeenCalledWith({ autoStart: true })
 
     fireEvent.click(enable!)
-    expect(setVideoSubtitlesMock).toHaveBeenCalledWith({ enabled: false })
+    expect(setVideoSubtitlesMock).toHaveBeenCalledWith({ enabled: !enabledBeforeClick })
 
     fireEvent.click(aiSegmentation!)
     expect(setVideoSubtitlesMock).toHaveBeenCalledWith({ aiSegmentation: true })

@@ -8,6 +8,8 @@ interface SearchableLanguageSelectorProps {
   detectedLangCode?: LangCodeISO6393
   label: string
   className?: string
+  /** `target` restricts the rows to what the translation backend can produce. */
+  side?: "source" | "target"
 }
 
 export function SearchableLanguageSelector({
@@ -16,6 +18,7 @@ export function SearchableLanguageSelector({
   detectedLangCode,
   label,
   className,
+  side,
 }: SearchableLanguageSelectorProps) {
   return (
     <Field className={className}>
@@ -24,6 +27,7 @@ export function SearchableLanguageSelector({
         value={value}
         onValueChange={onValueChange}
         detectedLangCode={detectedLangCode}
+        side={side}
         className="w-full"
       />
     </Field>

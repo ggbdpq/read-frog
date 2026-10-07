@@ -1,23 +1,17 @@
-import { i18n } from "@/utils/i18n"
 import { PageLayout } from "../../components/page-layout"
-import { AIContentAwareConfig } from "./ai-content-aware"
-import { BuiltInAiUsageConfig } from "./built-in-ai-usage"
-import { FeatureProvidersConfig } from "./feature-providers"
-import { LanguageDetectionConfig } from "./language-detection"
-import { ProvidersConfig } from "./providers-config"
+import { DoubaoServiceList } from "./doubao-services"
 
+/**
+ * 「翻译服务」页。页面文案按二次开发需求硬编码中文，不进 locales。
+ */
 export function ApiProvidersPage() {
   return (
     <PageLayout
-      title={i18n.t("options.apiProviders.title")}
-      description={i18n.t("options.apiProviders.pageDescription")}
+      title="翻译服务"
+      description="只提供三个豆包翻译服务，共用同一个豆包登录态。引擎由服务本身决定，不需要配置模型、API Key 或请求地址。"
       innerClassName="flex flex-col gap-10"
     >
-      <ProvidersConfig />
-      <FeatureProvidersConfig />
-      <LanguageDetectionConfig />
-      <AIContentAwareConfig />
-      <BuiltInAiUsageConfig />
+      <DoubaoServiceList />
     </PageLayout>
   )
 }

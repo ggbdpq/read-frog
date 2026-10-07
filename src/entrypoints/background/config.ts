@@ -18,6 +18,12 @@ export async function ensureInitializedConfig() {
 /**
  * Whether the config was created from defaults in this run, rather than loaded from storage.
  * Shares the memoized initialization above, so it never triggers a second init.
+ *
+ * Currently has no caller: the one-time Doubao adoption (`selectFreshTranslateProviders`)
+ * used to be gated on this, and is now unconditional because an existing user's valid stored
+ * config never reports a fresh install — gating on it left exactly those users on their old
+ * provider. Kept because it is the only accessor for that flag and the next one-shot
+ * setup step will want it.
  */
 export async function isFreshInstalledConfig() {
   if (!configPromise) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_PROVIDER_CONFIG, DEFAULT_PROVIDER_CONFIG_LIST } from "@/utils/constants/providers"
+import { DEFAULT_PROVIDER_CONFIG } from "@/utils/constants/providers"
 import { getObjectWithoutAPIKeys, hasAPIKey } from "../api"
 import { LATEST_SCHEMA_VERSION } from "../migration"
 
@@ -18,9 +18,10 @@ describe("config utilities", () => {
     }
 
     it("should remove apiKey from OpenAI provider config", () => {
-      const openaiConfigFromConstants = DEFAULT_PROVIDER_CONFIG_LIST.find(
-        (config) => config.provider === "openai",
-      )!
+      // DEFAULT_PROVIDER_CONFIG_LIST 现在只播种三个豆包服务（纯翻译），所以这里
+      // 直接从 provider 常量里取 OpenAI 的默认条目 —— 用例要测的是「剥掉 apiKey」，
+      // 不是「哪些 provider 会被播种」。
+      const openaiConfigFromConstants = DEFAULT_PROVIDER_CONFIG.openai
       const openaiConfigWithApiKey = {
         ...openaiConfigFromConstants,
         apiKey: "sk-1234567890abcdef",

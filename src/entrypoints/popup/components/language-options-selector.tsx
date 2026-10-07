@@ -2,11 +2,14 @@ import type { LangCodeISO6393 } from "@read-frog/definitions"
 import type { LanguageItem } from "@/components/language-combobox-options"
 import { Combobox as ComboboxPrimitive } from "@base-ui/react"
 import { Icon } from "@iconify/react"
-import { langCodeISO6393Schema } from "@read-frog/definitions"
 import { IconChevronDown } from "@tabler/icons-react"
 import { useAtom, useAtomValue } from "jotai"
 import { useMemo } from "react"
-import { filterLanguage } from "@/components/language-combobox-options"
+import {
+  filterLanguage,
+  getAllLanguageItems,
+  getTargetLanguageItems,
+} from "@/components/language-combobox-options"
 import { Button } from "@/components/ui/base-ui/button"
 import {
   Combobox,
@@ -20,14 +23,6 @@ import { configFieldsAtomMap } from "@/utils/atoms/config"
 import { detectedCodeAtom } from "@/utils/atoms/detected-code"
 import { i18n } from "@/utils/i18n"
 import { getLanguageLabel, getLanguageName } from "@/utils/language-labels"
-
-function createLanguageItem(code: LangCodeISO6393): LanguageItem<LangCodeISO6393> {
-  return {
-    value: code,
-    label: getLanguageLabel(code),
-    name: getLanguageName(code),
-  }
-}
 
 const langSelectorTriggerClasses = "!h-14 w-30 rounded-lg pr-2 gap-1 justify-between bg-transparent"
 
@@ -66,10 +61,9 @@ function LanguageComboboxTrigger({
 export default function LanguageOptionsSelector() {
   const [language, setLanguage] = useAtom(configFieldsAtomMap.language)
   const detectedCode = useAtomValue(detectedCodeAtom)
-  const targetLanguageItems = useMemo(
-    () => langCodeISO6393Schema.options.map(createLanguageItem),
-    [],
-  )
+  // Only the languages the translation backend can actually produce: picking one it
+  // cannot translate into fails the request before it is sent.
+  const targetLanguageItems = useMemo(() => getTargetLanguageItems(), [])
   const sourceLanguageItems = useMemo<LanguageItem[]>(
     () => [
       {
@@ -77,9 +71,9 @@ export default function LanguageOptionsSelector() {
         label: getLanguageLabel(detectedCode),
         name: getLanguageName(detectedCode),
       },
-      ...targetLanguageItems,
+      ...getAllLanguageItems(),
     ],
-    [detectedCode, targetLanguageItems],
+    [detectedCode],
   )
   const currentSourceItem = useMemo(
     () =>

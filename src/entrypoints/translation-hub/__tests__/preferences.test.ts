@@ -63,7 +63,8 @@ describe("Translation Hub preferences", () => {
     expect(openHub().get(selectedProviderIdsAtom)).toEqual(["read-frog-free-ai"])
 
     const localId = DEFAULT_CONFIG.providersConfig.find(
-      (provider) => provider.enabled && provider.provider === "microsoft-translate",
+      // 二次开发后默认列表没有独立的 microsoft-translate,本地免费服务是豆包封装版。
+      (provider) => provider.enabled && provider.provider === "doubao-microsoft",
     )?.id
     expect(localId).toBeDefined()
     await first.set(selectedProviderIdsAtom, [localId!])

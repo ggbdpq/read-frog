@@ -53,21 +53,31 @@ async function setup() {
 }
 
 describe("in-memory translation tier in translateTextCore", () => {
+  // 这条链路首次进入时要物化整张 provider 注册表（AI SDK 的全部 provider 包）。
+  // 冷启动下第一个用例的模块加载就要 ~5–8s，正好压在 vitest 默认的 5000ms 上 ——
+  // 主套件里因为已被别的文件预热过而看不出来，单跑这个文件就会假超时。测试体本身
+  // 只花 1ms（已实测），所以这是加载预算，不是行为问题；放宽超时而不是删断言。
+  const LOAD_BUDGET_MS = 30_000
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it("serves a repeated page request from memory without a second background round trip", async () => {
-    const { sendMessage, translate } = await setup()
-    sendMessage.mockResolvedValue("你好")
+  it(
+    "serves a repeated page request from memory without a second background round trip",
+    async () => {
+      const { sendMessage, translate } = await setup()
+      sendMessage.mockResolvedValue("你好")
 
-    await expect(translate("Hello")).resolves.toBe("你好")
-    await expect(translate("Hello")).resolves.toBe("你好")
+      await expect(translate("Hello")).resolves.toBe("你好")
+      await expect(translate("Hello")).resolves.toBe("你好")
 
-    // A virtualized page recreating its nodes re-runs this exact call; the
-    // second run must not pay the message round trip again.
-    expect(sendMessage).toHaveBeenCalledTimes(1)
-  })
+      // A virtualized page recreating its nodes re-runs this exact call; the
+      // second run must not pay the message round trip again.
+      expect(sendMessage).toHaveBeenCalledTimes(1)
+    },
+    LOAD_BUDGET_MS,
+  )
 
   it("misses when the request identity differs", async () => {
     const { sendMessage, translate } = await setup()

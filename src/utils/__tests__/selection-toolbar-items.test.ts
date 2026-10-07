@@ -11,6 +11,8 @@ import {
 
 function toolbarWith(customIds: string[] = [], order?: string[]) {
   const selectionToolbar = structuredClone(DEFAULT_CONFIG.selectionToolbar)
+  // 二次开发后的出厂默认把词典动作关了；本文件的用例测的是条目机制，恢复开启状态。
+  selectionToolbar.builtInActions.dictionary.enabled = true
   const dictionary = getBuiltInDictionaryAction(selectionToolbar)
   selectionToolbar.customActions = customIds.map((id): SelectionToolbarCustomAction => ({
     ...dictionary,

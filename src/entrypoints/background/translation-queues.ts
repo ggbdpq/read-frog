@@ -81,6 +81,8 @@ async function executeQueuedTranslation<TContext>(
     signal?: AbortSignal
     hostedRequestId?: string
     glossaryTerms?: readonly MatchedTerm[]
+    /** 豆包 `scene`（数字 1–6）；只有豆包三个 provider 读它，其它 provider 忽略。 */
+    doubaoScene?: number
   } = {},
 ): Promise<string> {
   const { provider, hostedFeature } = routing
@@ -237,6 +239,9 @@ export async function executeBatchTranslation<TContext>(
       signal,
       hostedRequestId,
       glossaryTerms: mergeBatchGlossaryTerms(dataList),
+      // 豆包场景号是批的**同质**属性：每个成员都来自同一批（同一 function/通道），
+      // 而且 `getBatchKey` 里带了它，跨场景的请求不会混进同一批。
+      doubaoScene: dataList[0]!.doubaoScene,
     },
   )
   return parseBatchResult(result)
@@ -254,6 +259,9 @@ export type TranslateBatchData<TContext = unknown> = QueuedTranslationRouting & 
   // Which revision `glossaryTerms` was read from — how `mergeBatchGlossaryTerms`
   // settles two members that disagree about one term.
   glossaryRevision?: number
+  // 豆包 `scene`（数字 1–6）。参加批次键：不同功能的场景号不同，混批会让同一条
+  // 请求同时代表「整页」和「划词」，服务端统计与语料都会错。
+  doubaoScene?: number
   // Cancellation scope (`${tabId}:${sessionId}`); absent = uncancellable.
   scope?: string
 }
@@ -331,6 +339,9 @@ async function createTranslationQueues<TContext>(config: TranslationQueueSetupCo
         // batch can only ever hold one glossary state, which is the only way to
         // represent a REMOVAL: see `mergeBatchGlossaryTerms`.
         `glossaryRevision:${data.glossaryRevision ?? 0}`,
+        // 豆包场景号（只有豆包 provider 有）：整页 1 / 划词 3 / 悬停 6 走的是不同
+        // 语义的请求，不能拼进同一批。对其它 provider 恒为空串，键不变。
+        `doubaoScene:${data.doubaoScene ?? ""}`,
       )
     },
     getCharacters: (data) => data.text.length,
@@ -367,7 +378,17 @@ async function createTranslationQueues<TContext>(config: TranslationQueueSetupCo
       return requestQueue.enqueue(batchThunk, earliestScheduleAt, hash, meta.scopes, { timeoutMs })
     },
     executeIndividual: async (data) => {
-      const { text, langConfig, provider, hash, scheduleAt, context, scope, glossaryTerms } = data
+      const {
+        text,
+        langConfig,
+        provider,
+        hash,
+        scheduleAt,
+        context,
+        scope,
+        glossaryTerms,
+        doubaoScene,
+      } = data
       // This individual fallback is its own model call, but any automatic
       // retries of its RequestQueue thunk reuse the same idempotency key.
       const hostedRequestId = getLocalProviderConfig(provider) ? undefined : getRandomUUID()
@@ -386,6 +407,8 @@ async function createTranslationQueues<TContext>(config: TranslationQueueSetupCo
           // over a prompt that HAD the terms in it — a mismatch that outlives
           // the failure by a week.
           glossaryTerms,
+          // 同理：场景号也必须跟着这一条走，否则回退路径会把它换成默认场景。
+          doubaoScene,
         })
       }
       return requestQueue.enqueue(thunk, scheduleAt, hash, scope ? [scope] : undefined)
