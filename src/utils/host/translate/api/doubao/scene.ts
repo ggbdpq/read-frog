@@ -3,7 +3,6 @@ import type { DoubaoScene } from "@/utils/constants/doubao"
 import {
   DOUBAO_DEFAULT_SCENE,
   DOUBAO_FEATURE_SCENES,
-  DOUBAO_SCENES,
   isDoubaoScene,
 } from "@/utils/constants/doubao"
 
@@ -34,8 +33,3 @@ export function resolveDoubaoScene(
   const mapped = DOUBAO_FEATURE_SCENES[ROUTE_TO_FEATURE[feature]]
   return mapped ?? DOUBAO_DEFAULT_SCENE
 }
-
-/** 悬停翻译：跑在划词通道上，场景号必须显式给 6。 */
-export const DOUBAO_HOVER_SCENE: DoubaoScene = DOUBAO_SCENES.hover
-
-export { isDoubaoScene }

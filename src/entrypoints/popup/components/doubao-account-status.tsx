@@ -1,8 +1,8 @@
 import type { DoubaoAuthRecord } from "@/utils/doubao-auth"
 import { Icon } from "@iconify/react"
-import { useCallback, useEffect, useState } from "react"
+import { useEffect } from "react"
 import { Badge } from "@/components/ui/base-ui/badge"
-import { getDoubaoAuth } from "@/utils/doubao-auth"
+import { useDoubaoAuthRecord } from "@/hooks/use-doubao-auth-record"
 import { openOptionsPage } from "@/utils/navigation"
 import { cn } from "@/utils/styles/utils"
 
@@ -43,23 +43,14 @@ function getStatusView(record: DoubaoAuthRecord | null): StatusView {
 
 /** popup 顶部的豆包账号状态；点进去就是 /doubao-account 登录页。 */
 export function DoubaoAccountStatus() {
-  const [record, setRecord] = useState<DoubaoAuthRecord | null>(null)
-
-  const refresh = useCallback(async () => {
-    setRecord(await getDoubaoAuth())
-  }, [])
+  const { record, refresh } = useDoubaoAuthRecord()
 
   useEffect(() => {
-    let active = true
-    void getDoubaoAuth().then((next) => {
-      if (active) setRecord(next)
-    })
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") void refresh()
     }
     document.addEventListener("visibilitychange", onVisibilityChange)
     return () => {
-      active = false
       document.removeEventListener("visibilitychange", onVisibilityChange)
     }
   }, [refresh])

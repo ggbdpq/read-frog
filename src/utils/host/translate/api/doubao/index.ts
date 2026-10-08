@@ -10,29 +10,11 @@
  *
  * 三条不变量（接口档案实测，别凭直觉改）：
  *   `scene` 是**数字**；`translate_service` 是**字符串**；只用流式端点。
+ *
+ * 这里只转口**模块外**真正消费的符号；client/sse 内部协作的导出请直连对应文件。
  */
 
-export {
-  buildDoubaoRequestBody,
-  doubaoTranslate,
-  resolveDoubaoEngine,
-  type DoubaoTranslateOptions,
-} from "./client"
-export { DOUBAO_BATCH_LIMITS, splitDoubaoBatches, type DoubaoBatch } from "./batching"
-export { resolveDoubaoScene, DOUBAO_HOVER_SCENE, isDoubaoScene } from "./scene"
-export {
-  DoubaoApiError,
-  classifyDoubaoErrorCode,
-  createDoubaoHttpError,
-  createDoubaoNetworkError,
-  describeDoubaoErrorCode,
-  isTransientDoubaoError,
-  summarizeDoubaoResponseBody,
-} from "./errors"
-export {
-  DoubaoSSEParser,
-  readDoubaoSSEStream,
-  type DoubaoSSEEvent,
-  type DoubaoStreamItem,
-  type DoubaoStreamOutcome,
-} from "./sse"
+export { doubaoTranslate } from "./client"
+export { splitDoubaoBatches } from "./batching"
+export { resolveDoubaoScene } from "./scene"
+export { DoubaoApiError } from "./errors"

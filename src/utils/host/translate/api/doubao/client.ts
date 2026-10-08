@@ -2,9 +2,7 @@ import type { TranslationTextFormat } from "@/types/config/translate"
 import {
   DOUBAO_DEFAULT_SCENE,
   DOUBAO_LANGUAGE_LIST_URL,
-  DOUBAO_PROVIDER_ENGINE,
   DOUBAO_STREAM_ARTICLE_URL,
-  isDoubaoProviderType,
   isDoubaoScene,
   toDoubaoLang,
   type DoubaoEngine,
@@ -44,10 +42,10 @@ export interface DoubaoTranslateOptions {
 }
 
 /**
- * 上线的 `stream_article_translate` 请求体。导出仅供测试与调试断言：其中两个字段的
- * 类型（`scene` 必须是数字、`translate_service` 必须是字符串）是这套接口最容易踩的坑。
+ * 上线的 `stream_article_translate` 请求体。其中两个字段的类型（`scene` 必须是数字、
+ * `translate_service` 必须是字符串）是这套接口最容易踩的坑。
  */
-export function buildDoubaoRequestBody(
+function buildDoubaoRequestBody(
   texts: readonly string[],
   targetLang: string,
   engine: DoubaoEngine,
@@ -427,12 +425,4 @@ export async function doubaoTranslate(
 
   const results = await doubaoTranslateInternal(texts, targetLang, options)
   return isSingle ? (results[0] ?? "") : results
-}
-
-/** provider 类型 → 引擎，顺便做一次运行时校验（配置是用户可编辑的持久化数据）。 */
-export function resolveDoubaoEngine(provider: string): DoubaoEngine {
-  if (!isDoubaoProviderType(provider)) {
-    throw new DoubaoApiError(`未知的豆包 provider 类型 "${provider}"，无法确定 translate_service。`)
-  }
-  return DOUBAO_PROVIDER_ENGINE[provider]
 }

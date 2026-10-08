@@ -80,9 +80,3 @@ function assertProgress(
     )
   }
 }
-
-/** 分批常量对外再导出一份，便于调用方/测试断言上限没有被悄悄改掉。 */
-export const DOUBAO_BATCH_LIMITS = {
-  characters: DOUBAO_BATCH_MAX_CHARS,
-  items: DOUBAO_BATCH_MAX_ITEMS,
-} as const

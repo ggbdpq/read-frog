@@ -2,11 +2,11 @@ import type { Config } from "@/types/config/config"
 import type { DoubaoAuthRecord } from "@/utils/doubao-auth"
 import { Icon } from "@iconify/react"
 import { useAtomValue, useSetAtom } from "jotai"
-import { useEffect, useState } from "react"
 import { Link } from "react-router"
 import { Badge } from "@/components/ui/base-ui/badge"
 import { Button } from "@/components/ui/base-ui/button"
 import { Switch } from "@/components/ui/base-ui/switch"
+import { useDoubaoAuthRecord } from "@/hooks/use-doubao-auth-record"
 import { configAtom, configFieldsAtomMap, writeConfigAtom } from "@/utils/atoms/config"
 import { patchProviderConfigAtom } from "@/utils/atoms/entity-config"
 import {
@@ -17,7 +17,6 @@ import {
 } from "@/utils/constants/doubao"
 import { buildFeatureProviderPatch } from "@/utils/constants/feature-providers"
 import { DEFAULT_PROVIDER_CONFIG_LIST } from "@/utils/constants/providers"
-import { getDoubaoAuth } from "@/utils/doubao-auth"
 import { cn } from "@/utils/styles/utils"
 
 /**
@@ -79,17 +78,7 @@ export function DoubaoServiceList() {
   const setProvidersConfig = useSetAtom(configFieldsAtomMap.providersConfig)
   const writeConfig = useSetAtom(writeConfigAtom)
   const patchProviderConfig = useSetAtom(patchProviderConfigAtom)
-  const [auth, setAuth] = useState<DoubaoAuthRecord | null>(null)
-
-  useEffect(() => {
-    let active = true
-    void getDoubaoAuth().then((next) => {
-      if (active) setAuth(next)
-    })
-    return () => {
-      active = false
-    }
-  }, [])
+  const { record: auth } = useDoubaoAuthRecord()
 
   const login = getLoginView(auth)
   const featureProviderIds = getFeatureProviderIds(config)

@@ -16,7 +16,6 @@ import { browser, storage } from "#imports"
 import {
   DOUBAO_COOKIE_DOMAIN,
   DOUBAO_CODE_LOGIN_EXPIRED,
-  DOUBAO_LOGIN_COOKIE_NAMES,
   DOUBAO_OK_CODE,
   DOUBAO_ORIGIN,
   DOUBAO_REQUIRED_COOKIE_NAMES,
@@ -118,12 +117,6 @@ export function parseCookieString(raw: string): Array<{ name: string; value: str
 
 export function buildCookieHeader(pairs: readonly { name: string; value: string }[]): string {
   return pairs.map(({ name, value }) => `${name}=${value}`).join("; ")
-}
-
-/** 是否已经具备登录态（只看最小必需集合）。 */
-export function hasLoginCookies(pairs: readonly { name: string; value: string }[]): boolean {
-  const names = new Set(pairs.filter((pair) => pair.value !== "").map((pair) => pair.name))
-  return DOUBAO_LOGIN_COOKIE_NAMES.every((required) => names.has(required))
 }
 
 /** 列出命中的必需 Cookie 名，用于界面展示「已拿到哪些」。 */
@@ -297,11 +290,17 @@ export async function getDoubaoCookie(): Promise<string> {
   }
 }
 
-/** 展示用脱敏：`sessionid=abc1…(32 字节)`。 */
+/** 展示用脱敏：`sessionid=abc1…(32 字节)`。已有解析好的键值对时用 `maskCookiePairs` 免去二次解析。 */
 export function maskCookie(
   cookie: string,
 ): Array<{ name: string; preview: string; length: number }> {
-  return parseCookieString(cookie).map(({ name, value }) => ({
+  return maskCookiePairs(parseCookieString(cookie))
+}
+
+export function maskCookiePairs(
+  pairs: readonly { name: string; value: string }[],
+): Array<{ name: string; preview: string; length: number }> {
+  return pairs.map(({ name, value }) => ({
     name,
     preview: value.length <= 6 ? "…" : `${value.slice(0, 4)}…${value.slice(-2)}`,
     length: value.length,

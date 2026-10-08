@@ -1,6 +1,6 @@
 import type { DoubaoAuthRecord, DoubaoProbeResult } from "@/utils/doubao-auth"
 import { Icon } from "@iconify/react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { browser } from "#imports"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/base-ui/alert"
 import {
@@ -24,13 +24,13 @@ import {
 } from "@/components/ui/base-ui/card"
 import { Separator } from "@/components/ui/base-ui/separator"
 import { Spinner } from "@/components/ui/base-ui/spinner"
+import { useDoubaoAuthRecord } from "@/hooks/use-doubao-auth-record"
 import { DOUBAO_LOGIN_URL } from "@/utils/constants/doubao"
 import {
   captureDoubaoAuthFromBrowser,
   clearDoubaoAuth,
-  getDoubaoAuth,
   listPresentRequiredCookies,
-  maskCookie,
+  maskCookiePairs,
   parseCookieString,
 } from "@/utils/doubao-auth"
 import { cn } from "@/utils/styles/utils"
@@ -84,8 +84,7 @@ function formatTime(timestamp: number | null | undefined): string {
 }
 
 export function DoubaoAccountPage() {
-  const [record, setRecord] = useState<DoubaoAuthRecord | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { record, loading, refresh } = useDoubaoAuthRecord()
   const [capturing, setCapturing] = useState(false)
   const [capture, setCapture] = useState<{
     present: string[]
@@ -93,25 +92,6 @@ export function DoubaoAccountPage() {
     savedAt: number | null
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  const reload = useCallback(async () => {
-    const next = await getDoubaoAuth()
-    setRecord(next)
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    void getDoubaoAuth()
-      .then((next) => {
-        if (active) setRecord(next)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
 
   async function handleCapture() {
     setCapturing(true)
@@ -123,7 +103,7 @@ export function DoubaoAccountPage() {
         probe: result.probe,
         savedAt: result.record?.savedAt ?? null,
       })
-      await reload()
+      await refresh()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught))
     } finally {
@@ -135,16 +115,14 @@ export function DoubaoAccountPage() {
     setError(null)
     await clearDoubaoAuth()
     setCapture(null)
-    await reload()
+    await refresh()
   }
 
   const tone = getStatusTone(record)
   const status = STATUS_STYLES[tone]
-  const masked = useMemo(() => (record ? maskCookie(record.cookie) : []), [record])
-  const presentCookies = useMemo(
-    () => (record ? listPresentRequiredCookies(parseCookieString(record.cookie)) : []),
-    [record],
-  )
+  const pairs = useMemo(() => (record ? parseCookieString(record.cookie) : []), [record])
+  const masked = useMemo(() => maskCookiePairs(pairs), [pairs])
+  const presentCookies = useMemo(() => listPresentRequiredCookies(pairs), [pairs])
 
   return (
     <PageLayout
@@ -302,7 +280,7 @@ export function DoubaoAccountPage() {
         </div>
         <ManualCookieImport
           onSaved={() => {
-            void reload()
+            void refresh()
           }}
         />
       </div>

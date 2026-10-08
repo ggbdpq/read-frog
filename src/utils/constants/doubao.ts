@@ -65,12 +65,6 @@ export const DOUBAO_SSE_EVENT_ERR = "err" as const
 export const DOUBAO_ENGINES = ["0", "1", "3"] as const
 export type DoubaoEngine = (typeof DOUBAO_ENGINES)[number]
 
-export const DOUBAO_ENGINE_LABELS: Record<DoubaoEngine, string> = {
-  "0": "火山引擎",
-  "1": "豆包 AI",
-  "3": "微软",
-}
-
 export const DOUBAO_ENGINE_DESCRIPTIONS: Record<DoubaoEngine, string> = {
   "0": "火山引擎机器翻译，速度最快，适合日常网页",
   "1": "豆包大模型驱动，论文与专业文档更准",
@@ -101,15 +95,6 @@ export const DOUBAO_SCENES = {
 } as const
 
 export type DoubaoScene = (typeof DOUBAO_SCENES)[keyof typeof DOUBAO_SCENES]
-
-export const DOUBAO_SCENE_LABELS: Record<DoubaoScene, string> = {
-  1: "整页翻译",
-  2: "AI 阅读器",
-  3: "划词翻译",
-  4: "截图翻译",
-  5: "图片文字提取",
-  6: "悬停翻译",
-}
 
 /** 未指定场景时的默认值：AI 阅读器。 */
 export const DOUBAO_DEFAULT_SCENE: DoubaoScene = DOUBAO_SCENES.aiReader

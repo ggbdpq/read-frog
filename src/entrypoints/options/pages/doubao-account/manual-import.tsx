@@ -19,9 +19,10 @@ import { Switch } from "@/components/ui/base-ui/switch"
 import { Textarea } from "@/components/ui/base-ui/textarea"
 import { DOUBAO_LOGIN_COOKIE_NAMES } from "@/utils/constants/doubao"
 import {
+  buildCookieHeader,
   importCookiesIntoBrowser,
   listPresentRequiredCookies,
-  maskCookie,
+  maskCookiePairs,
   parseCookieString,
   probeDoubaoAuth,
   setDoubaoAuth,
@@ -39,7 +40,7 @@ export function ManualCookieImport({ onSaved }: { onSaved: () => void }) {
   const [probe, setProbe] = useState<DoubaoProbeResult | null>(null)
 
   const pairs = useMemo(() => parseCookieString(raw), [raw])
-  const masked = useMemo(() => maskCookie(raw), [raw])
+  const masked = useMemo(() => maskCookiePairs(pairs), [pairs])
   const present = useMemo(() => listPresentRequiredCookies(pairs), [pairs])
   const missingLoginCookies = DOUBAO_LOGIN_COOKIE_NAMES.filter((name) => !present.includes(name))
   const canSave = pairs.length > 0 && missingLoginCookies.length === 0
@@ -57,7 +58,7 @@ export function ManualCookieImport({ onSaved }: { onSaved: () => void }) {
       const probeResult = writeToBrowser ? await probeDoubaoAuth() : null
 
       await setDoubaoAuth({
-        cookie: pairs.map(({ name, value }) => `${name}=${value}`).join("; "),
+        cookie: buildCookieHeader(pairs),
         source: "manual",
         savedAt: Date.now(),
         status: probeResult ? (probeResult.ok ? "valid" : "expired") : "unknown",
